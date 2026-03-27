@@ -1,6 +1,6 @@
 import { Client, EmbedBuilder, TextChannel } from 'discord.js';
 import { createHash } from 'crypto';
-import { feeds, state, type Db } from './db.js';
+import { feeds, state, wishlists, type Db } from './db.js';
 
 const REPO = 'Fortnite-Datamining/Fortnite-Datamining';
 const RAW_BASE = `https://raw.githubusercontent.com/${REPO}/main/data`;
@@ -305,6 +305,35 @@ async function checkShop(client: Client, db: Db) {
   embeds[embeds.length - 1].setFooter({ text: '🎁 = Giftable • Fortnite Datamining Updates' });
 
   await sendToFeeds(client, db, embeds);
+
+  // Wishlist DM notifications
+  const shopItemNames = [...seenNames].map(n => n.toLowerCase());
+  const matches = wishlists.getUsersForItems(db, shopItemNames);
+
+  const byUser = new Map<string, string[]>();
+  for (const m of matches) {
+    if (!byUser.has(m.user_id)) byUser.set(m.user_id, []);
+    byUser.get(m.user_id)!.push(m.item_name);
+  }
+
+  for (const [userId, skins] of byUser) {
+    try {
+      const user = await client.users.fetch(userId);
+      const skinList = skins.map(s => `• **${s}**`).join('\n');
+      await user.send({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('🔔 Wishlist Alert — Item Shop!')
+            .setDescription(`Skins from your wishlist are in the Item Shop right now!\n\n${skinList}\n\nGo grab them before they're gone!`)
+            .setColor(0x2ecc71)
+            .setTimestamp()
+            .setFooter({ text: 'Fortnite Datamining Updates • /unnotify to stop' })
+        ]
+      });
+    } catch {
+      // DMs closed or user not found
+    }
+  }
 }
 
 // ─── News ────────────────────────────────────────────────────────
@@ -652,12 +681,15 @@ export function startPoller(client: Client, db: Db) {
 
   const poll = async () => {
     const allFeeds = feeds.getAll(db);
-    if (allFeeds.length === 0) return;
+    if (allFeeds.length === 0) {
+      console.log('[Poller] No feeds configured — skipping. Use /setup to add a channel.');
+      return;
+    }
 
-    console.log('[Poller] Checking for changes...');
+    console.log(`[Poller] Checking for changes... (${allFeeds.length} feed${allFeeds.length === 1 ? '' : 's'} configured)`);
 
     try {
-      await Promise.allSettled([
+      const results = await Promise.allSettled([
         checkBuild(client, db),
         checkCosmetics(client, db),
         checkShop(client, db),
@@ -669,6 +701,13 @@ export function startPoller(client: Client, db: Db) {
         checkInstruments(client, db),
         checkBanners(client, db)
       ]);
+
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length > 0) {
+        for (const f of failed) console.warn(`[Poller] Check failed:`, (f as PromiseRejectedResult).reason);
+      }
+
+      console.log(`[Poller] Done. ${failed.length > 0 ? `${failed.length} check(s) failed.` : 'All checks passed.'}`);
     } catch (err) {
       console.warn(`[Poller] Error: ${err}`);
     }

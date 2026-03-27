@@ -26,6 +26,27 @@ const commands = [
   new SlashCommandBuilder()
     .setName('status')
     .setDescription('Show which channels are receiving Fortnite updates')
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName('notify')
+    .setDescription('Get DM\'d when a skin appears in the Item Shop')
+    .addStringOption((o) =>
+      o.setName('skin').setDescription('Name of the skin (e.g. Peely, Renegade Raider)').setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName('unnotify')
+    .setDescription('Remove a skin from your wishlist')
+    .addStringOption((o) =>
+      o.setName('skin').setDescription('Name of the skin to remove').setRequired(true)
+    )
+    .toJSON(),
+
+  new SlashCommandBuilder()
+    .setName('wishlist')
+    .setDescription('View your Item Shop wishlist')
     .toJSON()
 ];
 

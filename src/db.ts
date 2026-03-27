@@ -20,6 +20,13 @@ export function openDb(dbPath: string): Db {
       key TEXT PRIMARY KEY,
       hash TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS wishlists (
+      user_id TEXT NOT NULL,
+      item_name TEXT NOT NULL,
+      added_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      PRIMARY KEY (user_id, item_name)
+    );
   `);
   return db;
 }
@@ -36,6 +43,26 @@ export const feeds = {
   },
   getForGuild(db: Db, guildId: string) {
     return db.prepare('SELECT * FROM feeds WHERE guild_id = ?').all(guildId) as { guild_id: string; channel_id: string }[];
+  }
+};
+
+export const wishlists = {
+  add(db: Db, userId: string, itemName: string) {
+    db.prepare('INSERT OR IGNORE INTO wishlists (user_id, item_name) VALUES (?, ?)').run(userId, itemName.toLowerCase());
+  },
+  remove(db: Db, userId: string, itemName: string) {
+    return db.prepare('DELETE FROM wishlists WHERE user_id = ? AND item_name = ?').run(userId, itemName.toLowerCase());
+  },
+  getForUser(db: Db, userId: string) {
+    return db.prepare('SELECT item_name, added_at FROM wishlists WHERE user_id = ? ORDER BY added_at DESC').all(userId) as { item_name: string; added_at: number }[];
+  },
+  getUsersForItems(db: Db, itemNames: string[]) {
+    if (itemNames.length === 0) return [];
+    const placeholders = itemNames.map(() => '?').join(',');
+    return db.prepare(`SELECT user_id, item_name FROM wishlists WHERE item_name IN (${placeholders})`).all(...itemNames.map(n => n.toLowerCase())) as { user_id: string; item_name: string }[];
+  },
+  clear(db: Db, userId: string) {
+    db.prepare('DELETE FROM wishlists WHERE user_id = ?').run(userId);
   }
 };
 
