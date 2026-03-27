@@ -6,6 +6,20 @@ import { startPoller } from './poller.js';
 const token = process.env.DISCORD_TOKEN;
 const dbPath = process.env.DB_PATH ?? './data/bot.sqlite';
 
+const BLOCKED_WORDS = new Set([
+  'nigga', 'nigger', 'faggot', 'fag', 'retard', 'tranny', 'kike', 'spic',
+  'chink', 'wetback', 'coon', 'gook', 'dyke', 'beaner', 'towelhead',
+  'negro', 'niggas', 'niggers', 'faggots', 'fags', 'retards', 'trannies',
+]);
+
+function containsSlur(text: string): boolean {
+  const lower = text.toLowerCase().replace(/[^a-z]/g, '');
+  for (const word of BLOCKED_WORDS) {
+    if (lower.includes(word)) return true;
+  }
+  return false;
+}
+
 if (!token) {
   console.error('Missing DISCORD_TOKEN in .env');
   process.exit(1);
@@ -29,6 +43,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const skin = interaction.options.getString('skin', true).trim();
     if (skin.length < 2 || skin.length > 100) {
       await interaction.reply({ content: 'Skin name must be between 2 and 100 characters.', ephemeral: true });
+      return;
+    }
+    if (containsSlur(skin)) {
+      await interaction.reply({ content: 'That name contains inappropriate language.', ephemeral: true });
       return;
     }
     const existing = wishlists.getForUser(db, interaction.user.id);
