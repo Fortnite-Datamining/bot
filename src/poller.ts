@@ -172,61 +172,140 @@ async function checkCosmetics(client: Client, db: Db) {
         .map(([type, items]) => `> **${items.length}** ${type}${items.length === 1 ? '' : 's'}`)
         .join('\n');
 
-      // Header embed
-      embeds.push(
-        new EmbedBuilder()
-          .setTitle(`🆕 ${newItems.length} New Cosmetics Found!`)
-          .setDescription(
-            `New items have been added to the game files — these are **unreleased** and could appear in the shop soon!\n\n` +
-            typeSummary
-          )
-          .setColor(0x00b2ff)
-          .setTimestamp()
-          .setFooter({ text: 'Fortnite Datamining Updates' })
-      );
+      // Helper: build a rich detailed embed for one item (old format)
+      const buildDetailedEmbed = (item: CosmeticItem) => {
+        const embed = new EmbedBuilder()
+          .setTitle(`${rarityEmoji(item.rarity?.displayValue)} ${item.name}`)
+          .setColor(rarityColor(item.rarity?.displayValue));
 
-      // Show featured outfits with images (up to 8)
-      const outfits = newItems.filter(i => i.type?.displayValue === 'Outfit' && i.images?.featured);
-      for (const item of outfits.slice(0, 8)) {
+        const desc: string[] = [];
+        if (item.description) desc.push(`*"${item.description}"*`);
+        desc.push('');
+        if (item.type?.displayValue) desc.push(`**Type:** ${item.type.displayValue}`);
+        if (item.rarity?.displayValue) desc.push(`**Rarity:** ${item.rarity.displayValue}`);
+        if (item.set?.value) desc.push(`**Set:** ${item.set.value}`);
+        if (item.introduction?.text) desc.push(`**${item.introduction.text}**`);
+        if (item.variants && item.variants.length > 0) {
+          const styleCount = item.variants.reduce((sum, v) => sum + v.options.length, 0);
+          desc.push(`**Styles:** ${styleCount} variant${styleCount === 1 ? '' : 's'} available`);
+        }
+        embed.setDescription(desc.join('\n'));
+
+        const featured = item.images?.featured;
+        const icon = item.images?.icon ?? item.images?.smallIcon;
+        if (featured && item.type?.displayValue === 'Outfit') {
+          embed.setImage(featured);
+        } else if (icon) {
+          embed.setThumbnail(icon);
+        }
+        return embed;
+      };
+
+      // ── SIZE-ADAPTIVE FORMATTING ──────────────────────────────
+      if (newItems.length <= 20) {
+        // SMALL UPDATE: rich detailed embed per item (old format)
         embeds.push(
           new EmbedBuilder()
-            .setTitle(`${rarityEmoji(item.rarity?.displayValue)} ${item.name}`)
+            .setTitle(`🆕 ${newItems.length} New Cosmetic${newItems.length === 1 ? '' : 's'} Found!`)
             .setDescription(
-              `${item.description ? `*"${item.description}"*\n` : ''}` +
-              `**${item.rarity?.displayValue ?? 'Unknown'}** Outfit` +
-              `${item.set?.value ? ` • **${item.set.value}** Set` : ''}` +
-              `${item.variants ? ` • ${item.variants.reduce((s, v) => s + v.options.length, 0)} styles` : ''}`
+              `New items have been added to the game files — these are **unreleased** and could appear in the shop soon!\n\n` +
+              typeSummary
             )
-            .setImage(item.images!.featured!)
-            .setColor(rarityColor(item.rarity?.displayValue))
+            .setColor(0x00b2ff)
+            .setTimestamp()
+            .setFooter({ text: 'Fortnite Datamining Updates' })
         );
-      }
 
-      // Compact list of ALL remaining items grouped by type
-      for (const [type, items] of byType) {
-        // Skip outfits we already showed with images
-        const shownOutfitIds = new Set(outfits.slice(0, 8).map(o => o.id));
-        const remaining = type === 'Outfit'
-          ? items.filter(i => !shownOutfitIds.has(i.id))
-          : items;
+        for (const item of newItems) {
+          embeds.push(buildDetailedEmbed(item));
+        }
+      } else if (newItems.length <= 100) {
+        // MEDIUM UPDATE: hybrid — featured outfits with images + compact list for rest
+        embeds.push(
+          new EmbedBuilder()
+            .setTitle(`🆕 ${newItems.length} New Cosmetics Found!`)
+            .setDescription(
+              `New items have been added to the game files — these are **unreleased** and could appear in the shop soon!\n\n` +
+              typeSummary
+            )
+            .setColor(0x00b2ff)
+            .setTimestamp()
+            .setFooter({ text: 'Fortnite Datamining Updates' })
+        );
 
-        if (remaining.length === 0) continue;
+        // Show up to 10 featured outfits with full detail
+        const outfits = newItems.filter(i => i.type?.displayValue === 'Outfit' && i.images?.featured);
+        const featuredOutfits = outfits.slice(0, 10);
+        for (const item of featuredOutfits) {
+          embeds.push(buildDetailedEmbed(item));
+        }
 
-        const lines = remaining.map(item => {
-          const emoji = rarityEmoji(item.rarity?.displayValue);
-          const rarity = item.rarity?.displayValue ?? '';
-          const set = item.set?.value ? ` · ${item.set.value}` : '';
-          return `${emoji} **${item.name}** — ${rarity}${set}`;
-        });
+        // Compact list of everything else, grouped by type
+        const shownIds = new Set(featuredOutfits.map(o => o.id));
+        for (const [type, items] of byType) {
+          const remaining = items.filter(i => !shownIds.has(i.id));
+          if (remaining.length === 0) continue;
 
-        const chunks = chunkLines(lines);
-        for (let i = 0; i < chunks.length; i++) {
-          embeds.push(
-            new EmbedBuilder()
-              .setTitle(i === 0 ? `${type}s (${items.length})` : `${type}s (cont.)`)
-              .setDescription(chunks[i])
-              .setColor(0x00b2ff)
-          );
+          const lines = remaining.map(item => {
+            const emoji = rarityEmoji(item.rarity?.displayValue);
+            const rarity = item.rarity?.displayValue ?? '';
+            const set = item.set?.value ? ` · ${item.set.value}` : '';
+            const intro = item.introduction?.text ? ` · ${item.introduction.text}` : '';
+            return `${emoji} **${item.name}** — ${rarity}${set}${intro}`;
+          });
+
+          const chunks = chunkLines(lines);
+          for (let i = 0; i < chunks.length; i++) {
+            embeds.push(
+              new EmbedBuilder()
+                .setTitle(i === 0 ? `${type}s (${items.length})` : `${type}s (cont.)`)
+                .setDescription(chunks[i])
+                .setColor(0x00b2ff)
+            );
+          }
+        }
+      } else {
+        // HUGE UPDATE (100+): full compact grouped format
+        embeds.push(
+          new EmbedBuilder()
+            .setTitle(`🆕 ${newItems.length} New Cosmetics Found!`)
+            .setDescription(
+              `New items have been added to the game files — these are **unreleased** and could appear in the shop soon!\n\n` +
+              typeSummary
+            )
+            .setColor(0x00b2ff)
+            .setTimestamp()
+            .setFooter({ text: 'Fortnite Datamining Updates' })
+        );
+
+        // Up to 8 featured outfits with images for the highlight reel
+        const outfits = newItems.filter(i => i.type?.displayValue === 'Outfit' && i.images?.featured);
+        const featuredOutfits = outfits.slice(0, 8);
+        for (const item of featuredOutfits) {
+          embeds.push(buildDetailedEmbed(item));
+        }
+
+        const shownIds = new Set(featuredOutfits.map(o => o.id));
+        for (const [type, items] of byType) {
+          const remaining = items.filter(i => !shownIds.has(i.id));
+          if (remaining.length === 0) continue;
+
+          const lines = remaining.map(item => {
+            const emoji = rarityEmoji(item.rarity?.displayValue);
+            const rarity = item.rarity?.displayValue ?? '';
+            const set = item.set?.value ? ` · ${item.set.value}` : '';
+            return `${emoji} **${item.name}** — ${rarity}${set}`;
+          });
+
+          const chunks = chunkLines(lines);
+          for (let i = 0; i < chunks.length; i++) {
+            embeds.push(
+              new EmbedBuilder()
+                .setTitle(i === 0 ? `${type}s (${items.length})` : `${type}s (cont.)`)
+                .setDescription(chunks[i])
+                .setColor(0x00b2ff)
+            );
+          }
         }
       }
 
