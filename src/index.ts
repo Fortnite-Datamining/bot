@@ -38,7 +38,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const { commandName } = interaction;
 
-  // Wishlist commands work in DMs too
   if (commandName === 'notify') {
     const skin = interaction.options.getString('skin', true).trim();
     if (skin.length < 2 || skin.length > 100) {
@@ -87,7 +86,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // Server-only commands below
   if (!interaction.inCachedGuild()) {
     await interaction.reply({ content: 'This command can only be used in a server.', ephemeral: true });
     return;

@@ -11,7 +11,7 @@ const commands = [
     .addChannelOption((o) =>
       o.setName('channel').setDescription('Channel to post updates in').addChannelTypes(ChannelType.GuildText).setRequired(true)
     )
-    .setDefaultMemberPermissions(0x20) // ManageGuild
+    .setDefaultMemberPermissions(0x20)
     .toJSON(),
 
   new SlashCommandBuilder()

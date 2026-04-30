@@ -51,7 +51,6 @@ function rarityEmoji(rarity?: string): string {
   return '⚪';
 }
 
-/** Split text lines into chunks that fit in embed descriptions (max ~4000 chars) */
 function chunkLines(lines: string[], maxChars = 3900): string[] {
   const chunks: string[] = [];
   let current = '';
@@ -85,8 +84,6 @@ async function sendToFeeds(client: Client, db: Db, embeds: EmbedBuilder[], conte
     }
   }
 }
-
-// ─── Build / Game Update ─────────────────────────────────────────
 
 interface BuildInfo {
   build: string;
@@ -126,8 +123,6 @@ async function checkBuild(client: Client, db: Db) {
   state.setHash(db, 'build', currentHash);
 }
 
-// ─── BR Cosmetics ────────────────────────────────────────────────
-
 interface CosmeticItem {
   id: string;
   name: string;
@@ -159,7 +154,6 @@ async function checkCosmetics(client: Client, db: Db) {
     if (newItems.length > 0) {
       const embeds: EmbedBuilder[] = [];
 
-      // Group by type
       const byType = new Map<string, CosmeticItem[]>();
       for (const item of newItems) {
         const type = item.type?.displayValue ?? 'Other';
@@ -172,7 +166,6 @@ async function checkCosmetics(client: Client, db: Db) {
         .map(([type, items]) => `> **${items.length}** ${type}${items.length === 1 ? '' : 's'}`)
         .join('\n');
 
-      // Helper: build a rich detailed embed for one item (old format)
       const buildDetailedEmbed = (item: CosmeticItem) => {
         const embed = new EmbedBuilder()
           .setTitle(`${rarityEmoji(item.rarity?.displayValue)} ${item.name}`)
@@ -201,9 +194,7 @@ async function checkCosmetics(client: Client, db: Db) {
         return embed;
       };
 
-      // ── SIZE-ADAPTIVE FORMATTING ──────────────────────────────
       if (newItems.length <= 20) {
-        // SMALL UPDATE: rich detailed embed per item (old format)
         embeds.push(
           new EmbedBuilder()
             .setTitle(`🆕 ${newItems.length} New Cosmetic${newItems.length === 1 ? '' : 's'} Found!`)
@@ -220,7 +211,6 @@ async function checkCosmetics(client: Client, db: Db) {
           embeds.push(buildDetailedEmbed(item));
         }
       } else if (newItems.length <= 100) {
-        // MEDIUM UPDATE: hybrid - featured outfits with images + compact list for rest
         embeds.push(
           new EmbedBuilder()
             .setTitle(`🆕 ${newItems.length} New Cosmetics Found!`)
@@ -233,14 +223,12 @@ async function checkCosmetics(client: Client, db: Db) {
             .setFooter({ text: 'Fortnite Datamining Updates' })
         );
 
-        // Show up to 10 featured outfits with full detail
         const outfits = newItems.filter(i => i.type?.displayValue === 'Outfit' && i.images?.featured);
         const featuredOutfits = outfits.slice(0, 10);
         for (const item of featuredOutfits) {
           embeds.push(buildDetailedEmbed(item));
         }
 
-        // Compact list of everything else, grouped by type
         const shownIds = new Set(featuredOutfits.map(o => o.id));
         for (const [type, items] of byType) {
           const remaining = items.filter(i => !shownIds.has(i.id));
@@ -265,7 +253,6 @@ async function checkCosmetics(client: Client, db: Db) {
           }
         }
       } else {
-        // HUGE UPDATE (100+): full compact grouped format
         embeds.push(
           new EmbedBuilder()
             .setTitle(`🆕 ${newItems.length} New Cosmetics Found!`)
@@ -278,7 +265,6 @@ async function checkCosmetics(client: Client, db: Db) {
             .setFooter({ text: 'Fortnite Datamining Updates' })
         );
 
-        // Up to 8 featured outfits with images for the highlight reel
         const outfits = newItems.filter(i => i.type?.displayValue === 'Outfit' && i.images?.featured);
         const featuredOutfits = outfits.slice(0, 8);
         for (const item of featuredOutfits) {
@@ -309,7 +295,6 @@ async function checkCosmetics(client: Client, db: Db) {
         }
       }
 
-      // Footer on last embed
       embeds[embeds.length - 1].setFooter({ text: `${newItems.length} total new items • Fortnite Datamining Updates` });
 
       await sendToFeeds(client, db, embeds);
@@ -319,8 +304,6 @@ async function checkCosmetics(client: Client, db: Db) {
   state.setHash(db, 'cosmetics_br', currentHash);
   state.setHash(db, 'cosmetics_br_ids', JSON.stringify(ids));
 }
-
-// ─── Item Shop ───────────────────────────────────────────────────
 
 interface ShopData {
   data: {
@@ -356,7 +339,6 @@ async function checkShop(client: Client, db: Db) {
 
   const embeds: EmbedBuilder[] = [];
 
-  // Dedupe and organize items
   const seenNames = new Set<string>();
   interface ShopItem {
     name: string;
@@ -389,7 +371,6 @@ async function checkShop(client: Client, db: Db) {
   const date = new Date(data.data.date);
   const dateStr = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  // Header
   embeds.push(
     new EmbedBuilder()
       .setTitle(`🛒 Item Shop - ${dateStr}`)
@@ -398,7 +379,6 @@ async function checkShop(client: Client, db: Db) {
       .setTimestamp()
   );
 
-  // Group by section
   const bySection = new Map<string, ShopItem[]>();
   for (const item of items) {
     if (!bySection.has(item.section)) bySection.set(item.section, []);
@@ -428,7 +408,6 @@ async function checkShop(client: Client, db: Db) {
 
   await sendToFeeds(client, db, embeds);
 
-  // Wishlist DM notifications
   const shopItemNames = [...seenNames].map(n => n.toLowerCase());
   const matches = wishlists.getUsersForItems(db, shopItemNames);
 
@@ -457,8 +436,6 @@ async function checkShop(client: Client, db: Db) {
     }
   }
 }
-
-// ─── News ────────────────────────────────────────────────────────
 
 interface NewsData {
   data: {
@@ -510,8 +487,6 @@ async function checkNews(client: Client, db: Db) {
   state.setHash(db, 'news', currentHash);
   state.setHash(db, 'news_ids', JSON.stringify(motds.map((m) => m.id).sort()));
 }
-
-// ─── Playlists / Gamemodes ───────────────────────────────────────
 
 interface PlaylistItem {
   id: string;
@@ -567,8 +542,6 @@ async function checkPlaylists(client: Client, db: Db) {
   state.setHash(db, 'playlists_ids', JSON.stringify(ids));
 }
 
-// ─── Jam Tracks (Festival) ───────────────────────────────────────
-
 interface JamTrack {
   id: string;
   title: string;
@@ -621,8 +594,6 @@ async function checkTracks(client: Client, db: Db) {
   state.setHash(db, 'tracks_ids', JSON.stringify(ids));
 }
 
-// ─── LEGO Cosmetics ─────────────────────────────────────────────
-
 interface LegoItem {
   id: string;
   cosmeticId?: string;
@@ -655,7 +626,6 @@ async function checkLego(client: Client, db: Db) {
           .setFooter({ text: 'Fortnite Datamining Updates' })
       ];
 
-      // Show images for up to 10 LEGO skins
       for (const item of newItems.slice(0, 10)) {
         const img = item.images?.large ?? item.images?.small;
         if (img) {
@@ -680,8 +650,6 @@ async function checkLego(client: Client, db: Db) {
   state.setHash(db, 'lego', currentHash);
   state.setHash(db, 'lego_ids', JSON.stringify(ids));
 }
-
-// ─── Cars / Vehicles ────────────────────────────────────────────
 
 interface CarItem {
   id: string;
@@ -726,8 +694,6 @@ async function checkCars(client: Client, db: Db) {
   state.setHash(db, 'cars', currentHash);
   state.setHash(db, 'cars_ids', JSON.stringify(ids));
 }
-
-// ─── Instruments (Festival) ─────────────────────────────────────
 
 interface InstrumentItem {
   id: string;
@@ -777,8 +743,6 @@ async function checkInstruments(client: Client, db: Db) {
   state.setHash(db, 'instruments_ids', JSON.stringify(ids));
 }
 
-// ─── Banners ─────────────────────────────────────────────────────
-
 interface BannerItem {
   id: string;
   name: string;
@@ -822,8 +786,6 @@ async function checkBanners(client: Client, db: Db) {
   state.setHash(db, 'banners', currentHash);
   state.setHash(db, 'banners_ids', JSON.stringify(ids));
 }
-
-// ─── Poller ──────────────────────────────────────────────────────
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
