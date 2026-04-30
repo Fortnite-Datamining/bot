@@ -114,7 +114,7 @@ async function checkBuild(client: Client, db: Db) {
           `• New skins, items, and cosmetics may have been added to the files\n` +
           `• Map changes could be incoming\n` +
           `• New gamemodes or weapons might be on the way\n` +
-          `• Check back soon — we'll post everything we find!`
+          `• Check back soon - we'll post everything we find!`
         )
         .addFields({ name: 'Version', value: `v${version}`, inline: true })
         .setColor(0xe74c3c)
@@ -208,7 +208,7 @@ async function checkCosmetics(client: Client, db: Db) {
           new EmbedBuilder()
             .setTitle(`🆕 ${newItems.length} New Cosmetic${newItems.length === 1 ? '' : 's'} Found!`)
             .setDescription(
-              `New items have been added to the game files — these are **unreleased** and could appear in the shop soon!\n\n` +
+              `New items have been added to the game files - these are **unreleased** and could appear in the shop soon!\n\n` +
               typeSummary
             )
             .setColor(0x00b2ff)
@@ -220,12 +220,12 @@ async function checkCosmetics(client: Client, db: Db) {
           embeds.push(buildDetailedEmbed(item));
         }
       } else if (newItems.length <= 100) {
-        // MEDIUM UPDATE: hybrid — featured outfits with images + compact list for rest
+        // MEDIUM UPDATE: hybrid - featured outfits with images + compact list for rest
         embeds.push(
           new EmbedBuilder()
             .setTitle(`🆕 ${newItems.length} New Cosmetics Found!`)
             .setDescription(
-              `New items have been added to the game files — these are **unreleased** and could appear in the shop soon!\n\n` +
+              `New items have been added to the game files - these are **unreleased** and could appear in the shop soon!\n\n` +
               typeSummary
             )
             .setColor(0x00b2ff)
@@ -251,7 +251,7 @@ async function checkCosmetics(client: Client, db: Db) {
             const rarity = item.rarity?.displayValue ?? '';
             const set = item.set?.value ? ` · ${item.set.value}` : '';
             const intro = item.introduction?.text ? ` · ${item.introduction.text}` : '';
-            return `${emoji} **${item.name}** — ${rarity}${set}${intro}`;
+            return `${emoji} **${item.name}** - ${rarity}${set}${intro}`;
           });
 
           const chunks = chunkLines(lines);
@@ -270,7 +270,7 @@ async function checkCosmetics(client: Client, db: Db) {
           new EmbedBuilder()
             .setTitle(`🆕 ${newItems.length} New Cosmetics Found!`)
             .setDescription(
-              `New items have been added to the game files — these are **unreleased** and could appear in the shop soon!\n\n` +
+              `New items have been added to the game files - these are **unreleased** and could appear in the shop soon!\n\n` +
               typeSummary
             )
             .setColor(0x00b2ff)
@@ -294,7 +294,7 @@ async function checkCosmetics(client: Client, db: Db) {
             const emoji = rarityEmoji(item.rarity?.displayValue);
             const rarity = item.rarity?.displayValue ?? '';
             const set = item.set?.value ? ` · ${item.set.value}` : '';
-            return `${emoji} **${item.name}** — ${rarity}${set}`;
+            return `${emoji} **${item.name}** - ${rarity}${set}`;
           });
 
           const chunks = chunkLines(lines);
@@ -392,7 +392,7 @@ async function checkShop(client: Client, db: Db) {
   // Header
   embeds.push(
     new EmbedBuilder()
-      .setTitle(`🛒 Item Shop — ${dateStr}`)
+      .setTitle(`🛒 Item Shop - ${dateStr}`)
       .setDescription(`The Item Shop has reset! **${items.length} items** available today.`)
       .setColor(0x2ecc71)
       .setTimestamp()
@@ -410,7 +410,7 @@ async function checkShop(client: Client, db: Db) {
       const emoji = rarityEmoji(item.rarity);
       const sale = item.regularPrice > item.price ? ` ~~${item.regularPrice.toLocaleString()}~~ **SALE!**` : '';
       const gift = item.giftable ? ' 🎁' : '';
-      return `${emoji} **${item.name}** — ${item.price.toLocaleString()} V${sale}${gift}\n> ${item.rarity} ${item.type}`;
+      return `${emoji} **${item.name}** - ${item.price.toLocaleString()} V${sale}${gift}\n> ${item.rarity} ${item.type}`;
     });
 
     const chunks = chunkLines(lines);
@@ -445,7 +445,7 @@ async function checkShop(client: Client, db: Db) {
       await user.send({
         embeds: [
           new EmbedBuilder()
-            .setTitle('🔔 Wishlist Alert — Item Shop!')
+            .setTitle('🔔 Wishlist Alert - Item Shop!')
             .setDescription(`Skins from your wishlist are in the Item Shop right now!\n\n${skinList}\n\nGo grab them before they're gone!`)
             .setColor(0x2ecc71)
             .setTimestamp()
@@ -801,7 +801,7 @@ async function checkBanners(client: Client, db: Db) {
     const newItems = data.filter((i) => !oldIds.has(i.id));
 
     if (newItems.length > 0) {
-      const lines = newItems.map((b) => `🏳️ **${b.name || b.id}**${b.description ? ` — ${b.description}` : ''}`);
+      const lines = newItems.map((b) => `🏳️ **${b.name || b.id}**${b.description ? ` - ${b.description}` : ''}`);
 
       const chunks = chunkLines(lines);
       const embeds: EmbedBuilder[] = [];
@@ -830,12 +830,12 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 export function startPoller(client: Client, db: Db) {
   if (pollTimer) return;
 
-  console.log('[Poller] Started — watching GitHub repo every 5 min');
+  console.log('[Poller] Started - watching GitHub repo every 5 min');
 
   const poll = async () => {
     const allFeeds = feeds.getAll(db);
     if (allFeeds.length === 0) {
-      console.log('[Poller] No feeds configured — skipping. Use /setup to add a channel.');
+      console.log('[Poller] No feeds configured - skipping. Use /setup to add a channel.');
       return;
     }
 
