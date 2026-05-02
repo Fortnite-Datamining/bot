@@ -411,28 +411,31 @@ async function checkShop(client: Client, db: Db) {
   const shopItemNames = [...seenNames].map(n => n.toLowerCase());
   const matches = wishlists.getUsersForItems(db, shopItemNames);
 
-  const byUser = new Map<string, string[]>();
+  const byUser = new Map<string, { wish: string; matched: string }[]>();
   for (const m of matches) {
     if (!byUser.has(m.user_id)) byUser.set(m.user_id, []);
-    byUser.get(m.user_id)!.push(m.item_name);
+    byUser.get(m.user_id)!.push({ wish: m.item_name, matched: m.matched_shop_name });
   }
 
-  for (const [userId, skins] of byUser) {
+  for (const [userId, hits] of byUser) {
     try {
       const user = await client.users.fetch(userId);
-      const skinList = skins.map(s => `• **${s}**`).join('\n');
+      const seen = new Set<string>();
+      const lines = hits
+        .filter(h => { if (seen.has(h.matched)) return false; seen.add(h.matched); return true; })
+        .map(h => h.wish.toLowerCase() === h.matched ? `• **${h.matched}**` : `• **${h.matched}** (matched "${h.wish}")`)
+        .join('\n');
       await user.send({
         embeds: [
           new EmbedBuilder()
             .setTitle('🔔 Wishlist Alert - Item Shop!')
-            .setDescription(`Skins from your wishlist are in the Item Shop right now!\n\n${skinList}\n\nGo grab them before they're gone!`)
+            .setDescription(`Skins from your wishlist are in the Item Shop right now!\n\n${lines}\n\nGo grab them before they're gone!`)
             .setColor(0x2ecc71)
             .setTimestamp()
             .setFooter({ text: 'Fortnite Datamining Updates • /unnotify to stop' })
         ]
       });
     } catch {
-      // DMs closed or user not found
     }
   }
 }

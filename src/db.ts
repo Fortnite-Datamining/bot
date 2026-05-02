@@ -58,8 +58,19 @@ export const wishlists = {
   },
   getUsersForItems(db: Db, itemNames: string[]) {
     if (itemNames.length === 0) return [];
-    const placeholders = itemNames.map(() => '?').join(',');
-    return db.prepare(`SELECT user_id, item_name FROM wishlists WHERE item_name IN (${placeholders})`).all(...itemNames.map(n => n.toLowerCase())) as { user_id: string; item_name: string }[];
+    const shopNames = itemNames.map(n => n.toLowerCase());
+    const all = db.prepare('SELECT user_id, item_name FROM wishlists').all() as { user_id: string; item_name: string }[];
+    const matches: { user_id: string; item_name: string; matched_shop_name: string }[] = [];
+    for (const row of all) {
+      const wish = row.item_name.toLowerCase();
+      for (const shop of shopNames) {
+        if (shop === wish || shop.includes(wish) || wish.includes(shop)) {
+          matches.push({ user_id: row.user_id, item_name: row.item_name, matched_shop_name: shop });
+          break;
+        }
+      }
+    }
+    return matches;
   },
   clear(db: Db, userId: string) {
     db.prepare('DELETE FROM wishlists WHERE user_id = ?').run(userId);
