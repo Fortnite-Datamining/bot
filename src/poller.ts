@@ -409,7 +409,19 @@ async function checkShop(client: Client, db: Db) {
   await sendToFeeds(client, db, embeds);
 
   const shopItemNames = [...seenNames].map(n => n.toLowerCase());
-  const matches = wishlists.getUsersForItems(db, shopItemNames);
+
+  const prevItemsRaw = state.getHash(db, 'shop_items_prev');
+  const prevItems = new Set(prevItemsRaw ? JSON.parse(prevItemsRaw) as string[] : []);
+  state.setHash(db, 'shop_items_prev', JSON.stringify(shopItemNames));
+
+  if (!prevItemsRaw) {
+    return;
+  }
+
+  const newlyAppeared = shopItemNames.filter(n => !prevItems.has(n));
+  if (newlyAppeared.length === 0) return;
+
+  const matches = wishlists.getUsersForItems(db, newlyAppeared);
 
   const byUser = new Map<string, { wish: string; matched: string }[]>();
   for (const m of matches) {
